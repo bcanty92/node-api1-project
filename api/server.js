@@ -1,106 +1,108 @@
+
+
 // BUILD YOUR SERVER HERE
-const express = require("express");
-const db = require("./api/users/model.js");
+
+const express = require('express');
+const db = require('./users/model');
 
 const server = express();
-//express middleware
+
 server.use(express.json());
 
-//POST new user
-server.post("/api/users", async (req, res) => {
-  const name = req.body.name;
-  const bio = req.body.bio;
-  const newUser = await db.insert({
-    name: name,
-    bio: bio,
-  });
-  //name & bio both needed to same user
-  if (!name || !bio) {
-    res.status(400).json({
-      message: "Please provide both name and bio for the user",
-    });
-  } else if (newUser) {
-    //if the newUser is able to be saved: 201 message:
-    res.status(201).json(newUser);
-    console.log(newUser);
-  } else {
-    //500 message for an error with saving the new user to the database:
-    res.status(500).json({
-      message: "There was an error while saving the user to the database",
-    });
-  }
-});
+server.get('/', (req, res) => {
+	res.json({message: "Hello Brittany"});
+})
 
-//GET an array of all the users:
-server.get("/api/users", async (req, res) => {
-  const users = await db.find();
-  if (users) {
-    res.json(users);
-    console.log(users);
-  } else {
-    res.status(500).json({
-      message: "The users information could not be retrieved",
-    });
-  }
-});
+server.get("/api/users", (req, res) => {
+	db.find()
+		.then(users => {
+			console.log(users);
+			res.status(200).json(users)
+		})
+		.catch(err => {
+			res.status(500).json({
+				message: err.message
+			})
+		})
+})
 
-//GET users by ID
-server.get("/api/users/:id", async (req, res) => {
-  const id = req.params.id;
-  const user = await db.findById(id);
-  if (user) {
-    res.json(user);
-    console.log(user);
-  } else {
-    res.status(404).json({
-      message: "The user with the specified ID does not exist",
-    });
-    res
-      .status(500)
-      .json({ message: "The user information could not be retrieved" });
-  }
-});
+server.get("/api/users/:id", (req, res) => {
 
-//DELETE user by ID
+	db.findById(req.params.id)
+		.then(specUser => {
+			if (!specUser){
+				res.status(404).json({
+					message: "User with this id not found"
+				})
+			}
+			else {
+				console.log(specUser);
+				res.status(200).json(specUser);
+			}
+		})
+		.catch(err => {
+			console.log(err);
+			res.status(500).json({
+				message: err.message
+			})
+		})
+})
+
+server.post("/api/users", (req, res) => {
+	if (!req.body.name  || !req.body.bio) {
+		res.status(404).json({
+			message: "name or bio must be entered"
+		})
+	}
+	else {
+		db.insert(req.body)
+			.then(newUser => {
+				console.log("new user successfully created");
+				res.status(201).json(newUser)
+			})
+			.catch(() => {
+				res.status(500).json({
+					message: "cannot add new user"
+				})
+			})
+	}
+})
+
 server.delete("/api/users/:id", async (req, res) => {
-  const user = await db.findById(req.params.id);
-  if (user) {
-    await db.remove(user.id);
-    res.status(204).end();
-  } else if (!user) {
-    res
-      .status(404)
-      .json({ message: "The user with the specified ID does not exist" });
-  } else {
-    res.status(500).json({ message: "The user could not be removed" });
-  }
-});
+	const { id } = req.params
 
-//PUT / edit user by ID
-server.put("/api/users/:id", async (req, res) => {
-  const user = await db.findById(req.params.id);
-  const name = req.body.name;
-  const bio = req.body.bio;
-  //name & bio both needed to same user
-  if (!name || !bio) {
-    res.status(400).json({
-      message: "Please provide both name and bio for the user",
-    });
-  } else if (user) {
-    const updateUser = await db.update(user.id, {
-      name: name,
-      bio: bio,
-    });
-    res.json(updateUser);
-  } else if (!user) {
-    res
-      .status(404)
-      .json({ message: "The user with the specified ID does not exist" });
-  } else {
-    res.status(500).json({
-      message: "The user information could not be modified",
-    });
-  }
-});
+	db.remove(id)
+		.then(user => {
+			console.log("user successfuly deleted");
+			res.status(200).json(user)
+		})
+		.catch(() => {
+			res.status(404).json({
+				message: "cannot delete this user"})
+		})
+})
+
+server.put("/api/users/:id", (req, res) => {
+	const { id } = req.params;
+
+	if (!req.body.name || !req.body.bio) {
+		res.status(400).json({
+			message: "name or/and bio was not provided"
+		})
+	}
+	else {
+		db.update(id, req.body)
+			.then(user => {
+				console.log('user updated successfuly');
+				res.status(200).json(user);
+			})
+			.catch(() => {
+				console.log("there's an error with updating this user")
+				res.status(500).json({
+					message: "there's an error with updating this user"
+				})
+			})
+	}
+})
 
 module.exports = server;
